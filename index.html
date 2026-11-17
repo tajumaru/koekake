@@ -472,17 +472,27 @@ function tryDecodeAudio(file){
 }
 
 /* playback of a single slot (preview / main) */
+const phraseAudio = new Audio();
 let currentAudio=null;
+function unlockAudio(){
+  try{
+    phraseAudio.src = 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQAAAAA=';
+    const p = phraseAudio.play();
+    if(p) p.then(()=>{ try{ phraseAudio.pause(); }catch(e){} }).catch(()=>{});
+  }catch(e){}
+}
 function playSlotAudio(slot, volScale){
   return new Promise(res=>{
     stopCurrentAudio();
     if(voiceUrls[slot]){
-      const a = new Audio(voiceUrls[slot]);
+      const a = phraseAudio;
+      a.src = voiceUrls[slot];
       a.volume = Math.min(1, voiceVolume()*(volScale||1));
       currentAudio=a;
       a.onended = ()=>{ currentAudio=null; res(); };
       a.onerror = ()=>{ currentAudio=null; res(); };
-      a.play().catch(()=>{ currentAudio=null; res(); });
+      const p = a.play();
+      if(p) p.catch(()=>{ currentAudio=null; res(); });
     }else{
       speakText(settings.texts[slot]||'', res);
     }
@@ -490,7 +500,7 @@ function playSlotAudio(slot, volScale){
 }
 function stopCurrentAudio(){
   if(currentAudio){ try{ currentAudio.pause(); }catch(e){} currentAudio=null; }
-  if(window.speechSynthesis) speechSynthesis.cancel();
+  if(window.speechSynthesis && (speechSynthesis.speaking || speechSynthesis.pending)) speechSynthesis.cancel();
 }
 function speakText(text, done){
   if(!('speechSynthesis' in window)){ done&&done(); return; }
@@ -499,9 +509,10 @@ function speakText(text, done){
   try{ u.volume = voiceVolume(); }catch(e){}
   u.onend = ()=>done&&done();
   u.onerror = ()=>done&&done();
-  speechSynthesis.speak(u);
+  setTimeout(()=>{ try{ speechSynthesis.speak(u); }catch(e){ done&&done(); } }, 60);
 }
 async function previewSlot(slot){
+  unlockAudio();
   suspendDetection(30000);
   await playSlotAudio(slot, 1);
   suspendDetection(1000);
@@ -533,6 +544,7 @@ function dbToPct(db){ return Math.max(0, Math.min(100, (db+70)/70*100)); }
 
 async function startListening(){
   if(listening) return;
+  unlockAudio();
   try{
     micStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
   }catch(e){
@@ -657,6 +669,7 @@ async function onTrigger(peakDb){
   setStatus();
 }
 async function testPlay(){
+  unlockAudio();
   const entry = pickEntry();
   faceReact();
   addHistory({slot:entry.slot, label:entry.label, source:'テスト', peak:null});
@@ -982,6 +995,7 @@ $('memoBack').addEventListener('click', ()=>{ $('memoView').classList.add('hidde
 applySettingsToUI();
 renderHistory(); renderSummary(); renderReco();
 if(location.hash==='#memo'){ $('mainView').classList.add('hidden'); $('memoView').classList.remove('hidden'); }
+if('speechSynthesis' in window){ try{ speechSynthesis.getVoices(); }catch(e){} }
 openIDB().then(loadVoices).catch(()=>renderPhrases());
 </script>
 </body>
