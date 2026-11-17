@@ -1,0 +1,988 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>声かけ</title>
+<style>
+  :root{
+    --bg:#fdf8ee; --card:#ffffff; --ink:#3a3230; --sub:#8a7f78;
+    --accent:#f2a65a; --accent2:#e2703a; --teal:#7fb069; --red:#d64550;
+    --line:#eee2d0; --night-bg:#14161f; --night-card:#1e212e; --night-ink:#e8e6df; --night-line:#333748;
+  }
+  *{box-sizing:border-box; -webkit-tap-highlight-color:transparent;}
+  html,body{margin:0; padding:0;}
+  body{
+    font-family:"Hiragino Maru Gothic ProN","Hiragino Sans","Noto Sans JP",sans-serif;
+    background:var(--bg); color:var(--ink);
+    padding:16px 14px 40px; max-width:560px; margin:0 auto;
+    transition:background .4s,color .4s;
+  }
+  body.night{background:var(--night-bg); color:var(--night-ink);}
+  body.night .card{background:var(--night-card); border-color:var(--night-line);}
+  body.night input[type=text],body.night textarea{background:#262a3a; color:var(--night-ink); border-color:var(--night-line);}
+  body.night .sub{color:#a5a3b8;}
+  h1{font-size:22px; margin:4px 0 2px; text-align:center; letter-spacing:.1em;}
+  .sub{color:var(--sub); font-size:13px;}
+  .card{
+    background:var(--card); border:1.5px solid var(--line); border-radius:18px;
+    padding:16px; margin:14px 0; box-shadow:0 2px 8px rgba(120,90,40,.06);
+  }
+  .card h2{font-size:16px; margin:0 0 10px;}
+  .row{display:flex; align-items:center; gap:10px; flex-wrap:wrap;}
+  .grow{flex:1;}
+  button{
+    font-family:inherit; font-size:15px; border:none; border-radius:999px;
+    padding:10px 18px; background:var(--accent); color:#fff; cursor:pointer; font-weight:700;
+  }
+  button:active{transform:scale(.97);}
+  button.ghost{background:#fff; color:var(--accent2); border:1.5px solid var(--accent);}
+  body.night button.ghost{background:transparent;}
+  button.small{font-size:13px; padding:7px 13px;}
+  button.teal{background:var(--teal);}
+  button:disabled{opacity:.45;}
+  input[type=range]{width:100%; accent-color:var(--accent2);}
+  input[type=text],textarea{
+    width:100%; font-family:inherit; font-size:15px; padding:9px 11px;
+    border:1.5px solid var(--line); border-radius:10px; background:#fffdf8; color:var(--ink);
+  }
+  label.lbl{font-size:13px; font-weight:700; display:block; margin:12px 0 4px;}
+  .val{font-size:13px; color:var(--accent2); font-weight:700;}
+  /* summary */
+  #summaryBar{
+    text-align:center; font-size:15px; background:#fff3df; border:1.5px solid var(--line);
+    border-radius:14px; padding:10px 12px; margin-top:10px; line-height:1.6;
+  }
+  body.night #summaryBar{background:#262a3a; border-color:var(--night-line);}
+  /* stage */
+  #stage{position:relative; width:280px; height:280px; margin:6px auto 2px;}
+  #ringSvg{position:absolute; inset:0; transform:rotate(-90deg);}
+  #faceWrap{position:absolute; inset:26px; }
+  #faceSvg{width:100%; height:100%; overflow:visible;}
+  #glow{
+    position:absolute; inset:8px; border-radius:50%;
+    background:radial-gradient(circle, rgba(255,196,110,.55) 0%, rgba(255,196,110,0) 70%);
+    opacity:0; transition:opacity 1s ease; pointer-events:none;
+  }
+  #stage.heard #glow{opacity:1; transition:opacity .35s ease;}
+  body.night #stage.heard #glow{opacity:.45;}
+  #dbReadout{text-align:center; font-size:15px; margin-top:2px;}
+  #dbReadout b{font-size:22px;}
+  #levelBarWrap{height:14px; background:#f1e7d7; border-radius:99px; position:relative; margin:10px 4px 2px;}
+  body.night #levelBarWrap{background:#262a3a;}
+  #levelBar{height:100%; width:0%; background:linear-gradient(90deg,#a8d08d,#f2a65a,#d64550); border-radius:99px; transition:width .08s linear;}
+  #levelTick{position:absolute; top:-4px; bottom:-4px; width:3px; background:var(--red); border-radius:2px;}
+  #statusText{text-align:center; font-size:16px; font-weight:700; min-height:1.5em; margin-top:8px;}
+  #bigBtn{width:100%; font-size:20px; padding:16px; margin-top:10px;}
+  /* phrases */
+  .phrase{border-top:1px dashed var(--line); padding:12px 0 4px;}
+  .phrase:first-of-type{border-top:none;}
+  .phrase .ttl{font-weight:700; font-size:14px;}
+  .badge{font-size:11px; background:#ffe9c9; color:#a35b12; border-radius:99px; padding:2px 8px; font-weight:700;}
+  .badge.none{background:#eee; color:#888;}
+  body.night .badge.none{background:#333748; color:#aaa;}
+  audio{width:100%; margin-top:8px;}
+  /* ambient */
+  .ambGrid{display:grid; grid-template-columns:repeat(4,1fr); gap:8px;}
+  .ambGrid button{padding:10px 2px; font-size:13px; background:#fff; color:var(--ink); border:1.5px solid var(--line); font-weight:700;}
+  body.night .ambGrid button{background:#262a3a; color:var(--night-ink); border-color:var(--night-line);}
+  .ambGrid button.on{background:var(--teal); color:#fff; border-color:var(--teal);}
+  select{font-family:inherit; font-size:14px; padding:6px; border-radius:8px; border:1.5px solid var(--line);}
+  /* history */
+  #historyList{font-size:13.5px; line-height:1.9; max-height:260px; overflow:auto;}
+  .histPeak{color:var(--accent2); font-weight:700;}
+  /* toggle */
+  .switch{position:relative; width:52px; height:30px; flex:none;}
+  .switch input{opacity:0; width:0; height:0;}
+  .slider{position:absolute; inset:0; background:#ddd; border-radius:99px; transition:.2s; cursor:pointer;}
+  .slider:before{content:""; position:absolute; width:24px; height:24px; left:3px; top:3px; background:#fff; border-radius:50%; transition:.2s;}
+  .switch input:checked + .slider{background:var(--teal);}
+  .switch input:checked + .slider:before{transform:translateX(22px);}
+  /* simple mode */
+  body.simple .detailOnly{display:none !important;}
+  #simpleBar{display:none;}
+  body.simple #simpleBar{display:block;}
+  #simpleStart{width:100%; font-size:24px; padding:22px; border-radius:20px;}
+  .hidden{display:none !important;}
+  .note{font-size:12.5px; color:var(--sub); line-height:1.7;}
+  body.night .note{color:#a5a3b8;}
+  #memoView{line-height:1.9; font-size:15px;}
+  #memoView h3{margin:16px 0 4px; font-size:16px;}
+  .topbar{display:flex; justify-content:space-between; align-items:center;}
+  .topbar button{font-size:12.5px; padding:6px 12px;}
+  #savePanel{margin-top:8px;}
+  .recDot{display:inline-block; width:10px; height:10px; border-radius:50%; background:var(--red); margin-right:6px; animation:blink 1s infinite;}
+  @keyframes blink{50%{opacity:.25;}}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <span class="sub">声かけ</span>
+  <span>
+    <button class="ghost small" id="memoBtn">使い方</button>
+    <button class="ghost small" id="simpleBtn">かんたん表示</button>
+  </span>
+</div>
+
+<div id="mainView">
+  <div id="summaryBar">今日はまだ反応していません</div>
+
+  <!-- simple mode bar -->
+  <div id="simpleBar" class="card">
+    <button id="simpleStart">▶ 声かけをはじめる</button>
+    <div class="row" style="margin-top:12px; justify-content:space-between;">
+      <span style="font-weight:700;">夜モード</span>
+      <label class="switch"><input type="checkbox" id="nightToggle2"><span class="slider"></span></label>
+    </div>
+    <p class="note" style="text-align:center;"><a href="#" id="exitSimple" style="color:var(--accent2);">詳しい設定を開く</a></p>
+  </div>
+
+  <!-- stage -->
+  <div class="card">
+    <div id="stage">
+      <svg id="ringSvg" viewBox="0 0 200 200">
+        <circle cx="100" cy="100" r="94" fill="none" stroke="#f1e7d7" stroke-width="7"/>
+        <circle id="ringProg" cx="100" cy="100" r="94" fill="none" stroke="#f2a65a" stroke-width="7"
+          stroke-linecap="round" stroke-dasharray="590.6" stroke-dashoffset="590.6"/>
+        <g id="ringTickG">
+          <line id="ringTick" x1="100" y1="2" x2="100" y2="16" stroke="#d64550" stroke-width="4" stroke-linecap="round"/>
+        </g>
+      </svg>
+      <div id="glow"></div>
+      <div id="faceWrap">
+        <svg id="faceSvg" viewBox="0 0 200 200">
+          <g id="fur"></g>
+          <circle cx="100" cy="104" r="66" fill="#fffaf0"/>
+          <ellipse cx="76" cy="126" rx="11" ry="7" fill="#f7b1a1" opacity=".75"/>
+          <ellipse cx="124" cy="126" rx="11" ry="7" fill="#f7b1a1" opacity=".75"/>
+          <g id="eyesOpen">
+            <circle cx="80" cy="102" r="7.5" fill="#26221f"/>
+            <circle cx="120" cy="102" r="7.5" fill="#26221f"/>
+            <circle cx="82.5" cy="99" r="2.6" fill="#fff"/>
+            <circle cx="122.5" cy="99" r="2.6" fill="#fff"/>
+          </g>
+          <g id="eyesSmile" class="hidden" stroke="#26221f" stroke-width="4" fill="none" stroke-linecap="round">
+            <path d="M70 104 Q80 94 90 104"/>
+            <path d="M110 104 Q120 94 130 104"/>
+          </g>
+          <path d="M90 122 Q100 130 110 122" stroke="#26221f" stroke-width="3.5" fill="none" stroke-linecap="round"/>
+        </svg>
+      </div>
+    </div>
+    <div id="dbReadout">いまの音 <b id="dbVal">--</b> dB</div>
+    <div id="levelBarWrap"><div id="levelBar"></div><div id="levelTick"></div></div>
+    <div id="statusText">とまっています</div>
+    <button id="bigBtn">▶ 声かけをはじめる</button>
+    <div class="row" style="margin-top:10px;">
+      <button class="ghost small grow" id="testBtn">テストで声かけ</button>
+      <button class="ghost small grow" id="calibBtn">部屋の静かさをはかる</button>
+    </div>
+    <div class="row detailOnly" style="margin-top:12px; justify-content:space-between;">
+      <span style="font-weight:700;">夜モード（画面が暗くなります）</span>
+      <label class="switch"><input type="checkbox" id="nightToggle"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- calming sounds -->
+  <div class="card detailOnly">
+    <h2>安心音（流しっぱなしにできます）</h2>
+    <div class="ambGrid" id="ambGrid"></div>
+    <label class="lbl">安心音の大きさ <span class="val" id="ambVolVal"></span></label>
+    <input type="range" id="ambVol" min="0" max="100" value="50">
+    <div class="row" style="margin-top:10px;">
+      <span class="grow" style="font-size:14px;">自動で止まる時間</span>
+      <select id="ambTimer">
+        <option value="0">止めない</option>
+        <option value="10">10分</option>
+        <option value="30">30分</option>
+      </select>
+    </div>
+    <div class="row" style="margin-top:10px; justify-content:space-between;">
+      <span style="font-size:14px;">声かけの後に、安心音をつづける</span>
+      <label class="switch"><input type="checkbox" id="ambResume"><span class="slider"></span></label>
+    </div>
+  </div>
+
+  <!-- phrases -->
+  <div class="card detailOnly">
+    <h2>声かけの声（家族の声を録音できます）</h2>
+    <p class="note">声を入れた言葉は、その声で再生します。声がない言葉は、機械の声で読み上げます。録音した声はこのスマホの中にだけ保存されます。</p>
+    <div id="phraseList"></div>
+    <h2 style="margin-top:20px;">朝と夜の声かけ</h2>
+    <div class="row" style="justify-content:space-between;">
+      <span style="font-size:14px;">朝（5〜10時）と夜（21〜5時）で言葉を変える</span>
+      <label class="switch"><input type="checkbox" id="bandToggle" checked><span class="slider"></span></label>
+    </div>
+    <p class="note" id="bandNow"></p>
+    <div id="bandList"></div>
+  </div>
+
+  <!-- settings -->
+  <div class="card detailOnly">
+    <h2>設定</h2>
+    <label class="lbl">反応する音の大きさ（ライン） <span class="val" id="thrVal"></span></label>
+    <input type="range" id="thr" min="-60" max="-20" step="1" value="-40">
+    <p class="note" id="recoLine"></p>
+    <label class="lbl">音がつづく時間 <span class="val" id="durVal"></span></label>
+    <input type="range" id="dur" min="0.2" max="2" step="0.1" value="0.4">
+    <label class="lbl">声かけの声の大きさ <span class="val" id="volVal"></span></label>
+    <input type="range" id="vol" min="0" max="100" value="90">
+    <label class="lbl">声かけの間隔（休み時間） <span class="val" id="coolVal"></span></label>
+    <input type="range" id="cool" min="10" max="300" step="10" value="60">
+  </div>
+
+  <!-- history -->
+  <div class="card detailOnly">
+    <h2>記録</h2>
+    <div id="historyList"><span class="sub">まだ記録はありません</span></div>
+    <div class="row" style="margin-top:10px;">
+      <button class="ghost small" id="copyHistBtn">履歴をコピー</button>
+      <button class="ghost small" id="clearHistBtn">履歴を消す</button>
+    </div>
+    <div id="copyFallback" class="hidden">
+      <p class="note">下の文字を長押ししてコピーしてください。</p>
+      <textarea id="copyText" rows="6" readonly></textarea>
+    </div>
+  </div>
+
+  <p class="note" style="text-align:center;">これは家族の声で安心してもらうための道具です。<br>ナースコールの代わりにはなりません。</p>
+</div>
+
+<!-- memo view -->
+<div id="memoView" class="hidden">
+  <div class="topbar"><span style="font-weight:700;">使い方</span><button class="ghost small" id="memoBack">← もどる</button></div>
+  <h3>1. はじめかた</h3>
+  <p>「声かけをはじめる」を押します。「マイクを使いますか？」と聞かれたら「許可」を押してください。押したら、あとは置いておくだけで大丈夫です。</p>
+  <h3>2. 何が起きるの？</h3>
+  <p>咳やうめき声のような音に反応して、録音した家族の声で声かけを再生します。顔がほんのり光ったら、声かけをした合図です。</p>
+  <h3>3. やめたいとき</h3>
+  <p>同じボタンをもう一度押すと止まります。</p>
+  <h3>4. 夜は</h3>
+  <p>「夜モード」を押すと画面が暗くなり、声も少し小さくなります。</p>
+  <h3>5. 困ったとき</h3>
+  <p>・音が出ない → スマホの音量を上げてみてください<br>・反応しすぎる／しなさすぎる → 家族に連絡してください<br>・画面が消えてしまう → 充電しながら使うと安心です</p>
+  <h3>6. 大事なこと</h3>
+  <p>この道具は、家族の声で安心してもらうためのものです。ナースコールの代わりにはなりません。心配なときは、必ずナースコールを押してください。</p>
+</div>
+
+<input type="file" id="fileInput" accept="audio/*,.m4a,.mp3,.wav,.aac,.ogg" class="hidden">
+
+<script>
+"use strict";
+/* ============ fur (layered tufts) ============ */
+(function buildFur(){
+  const g = document.getElementById('fur');
+  const NS = 'http://www.w3.org/2000/svg';
+  const layers = [
+    {r:88, n:26, s:15, fill:'#f3e3c2'},
+    {r:84, n:22, s:13, fill:'#f8ecd2'},
+    {r:79, n:20, s:11, fill:'#fdf6e3'}
+  ];
+  layers.forEach((L,li)=>{
+    for(let i=0;i<L.n;i++){
+      const a = (i/L.n)*Math.PI*2 + li*0.35;
+      const rr = L.r + Math.sin(i*2.7+li)*3.5;
+      const c = document.createElementNS(NS,'circle');
+      c.setAttribute('cx', 100 + Math.cos(a)*rr*0.92);
+      c.setAttribute('cy', 104 + Math.sin(a)*rr*0.97);
+      c.setAttribute('r', L.s + Math.sin(i*1.3)*2);
+      c.setAttribute('fill', L.fill);
+      g.appendChild(c);
+    }
+  });
+})();
+
+/* ============ state ============ */
+const $ = id => document.getElementById(id);
+const DEFAULT_TEXTS = {
+  0:'お父さん、息して、落ち着いて',
+  1:'大丈夫だよ、そばにいるよ',
+  2:'ゆっくり息してね',
+  100:'おはよう、朝だよ',
+  101:'夜だよ、ゆっくり休んでね'
+};
+const SLOT_TITLES = {0:'声かけ 1',1:'声かけ 2',2:'声かけ 3',100:'朝の声かけ（5〜10時）',101:'夜の声かけ（21〜5時）'};
+let settings = {
+  thr:-40, dur:0.4, vol:90, cool:60,
+  ambVol:50, ambTimer:0, ambResume:false, bandOn:true,
+  night:false, simple:false, texts:Object.assign({}, DEFAULT_TEXTS)
+};
+try{
+  const s = JSON.parse(localStorage.getItem('koekake.settings.v1')||'null');
+  if(s) settings = Object.assign(settings, s, {texts:Object.assign({}, DEFAULT_TEXTS, s.texts||{})});
+}catch(e){}
+function saveSettings(){ try{ localStorage.setItem('koekake.settings.v1', JSON.stringify(settings)); }catch(e){} }
+
+let historyArr = [];
+try{ historyArr = JSON.parse(localStorage.getItem('koekake.history.v1')||'[]'); }catch(e){}
+function saveHistory(){ try{ localStorage.setItem('koekake.history.v1', JSON.stringify(historyArr.slice(-200))); }catch(e){} }
+
+/* ============ IndexedDB for voices ============ */
+let idb = null;
+function openIDB(){
+  return new Promise((res, rej)=>{
+    const rq = indexedDB.open('koekake-voices', 1);
+    rq.onupgradeneeded = ()=>{ rq.result.createObjectStore('phrases'); };
+    rq.onsuccess = ()=>{ idb = rq.result; res(); };
+    rq.onerror = ()=>rej(rq.error);
+  });
+}
+function idbGet(key){
+  return new Promise(res=>{
+    if(!idb) return res(null);
+    const rq = idb.transaction('phrases').objectStore('phrases').get(key);
+    rq.onsuccess = ()=>res(rq.result||null);
+    rq.onerror = ()=>res(null);
+  });
+}
+function idbSet(key, val){
+  return new Promise(res=>{
+    if(!idb) return res(false);
+    const rq = idb.transaction('phrases','readwrite').objectStore('phrases').put(val, key);
+    rq.onsuccess = ()=>res(true);
+    rq.onerror = ()=>res(false);
+  });
+}
+function idbDel(key){
+  return new Promise(res=>{
+    if(!idb) return res(false);
+    const rq = idb.transaction('phrases','readwrite').objectStore('phrases').delete(key);
+    rq.onsuccess = ()=>res(true);
+    rq.onerror = ()=>res(false);
+  });
+}
+
+/* ============ voices ============ */
+const voiceUrls = {};   // slot -> objectURL
+const voiceBlobs = {};  // slot -> Blob
+async function loadVoices(){
+  for(const slot of [0,1,2,100,101]){
+    const b = await idbGet(slot);
+    if(b){ voiceBlobs[slot]=b; voiceUrls[slot]=URL.createObjectURL(b); }
+  }
+  renderPhrases();
+}
+function voiceVolume(){ return (settings.vol/100) * (settings.night?0.5:1); }
+
+/* ============ phrase UI ============ */
+let mediaRecorder=null, recChunks=[], recSlot=null, recStream=null;
+let importSlot=null;
+
+function phraseCard(slot){
+  const wrap = document.createElement('div');
+  wrap.className='phrase';
+  const has = !!voiceUrls[slot];
+  wrap.innerHTML =
+    '<div class="row"><span class="ttl">'+SLOT_TITLES[slot]+'</span>'+
+    (has?'<span class="badge">声あり</span>':'<span class="badge none">声なし（読み上げ）</span>')+'</div>'+
+    '<label class="lbl">言葉（声がないとき読み上げます）</label>'+
+    '<input type="text" id="txt'+slot+'" value="">'+
+    '<div class="row" style="margin-top:9px;">'+
+      '<button class="small" data-act="rec" data-slot="'+slot+'">● 録音</button>'+
+      '<button class="ghost small" data-act="imp" data-slot="'+slot+'">取り込む</button>'+
+      '<button class="ghost small" data-act="play" data-slot="'+slot+'">聞いてみる</button>'+
+      (has?'<button class="ghost small" data-act="save" data-slot="'+slot+'">保存する</button>'+
+           '<button class="ghost small" data-act="del" data-slot="'+slot+'">声を消す</button>':'')+
+    '</div>'+
+    '<div id="recStat'+slot+'"></div>'+
+    '<div id="savePanel'+slot+'"></div>';
+  const inp = wrap.querySelector('#txt'+slot);
+  inp.value = settings.texts[slot]||'';
+  inp.addEventListener('change', ()=>{ settings.texts[slot]=inp.value; saveSettings(); });
+  wrap.querySelectorAll('button').forEach(b=>b.addEventListener('click', onPhraseBtn));
+  return wrap;
+}
+function renderPhrases(){
+  const pl = $('phraseList'); pl.innerHTML='';
+  [0,1,2].forEach(s=>pl.appendChild(phraseCard(s)));
+  const bl = $('bandList'); bl.innerHTML='';
+  [100,101].forEach(s=>bl.appendChild(phraseCard(s)));
+  updateBandNow();
+}
+function onPhraseBtn(e){
+  const slot = +e.currentTarget.dataset.slot;
+  const act = e.currentTarget.dataset.act;
+  if(act==='rec') toggleRecord(slot);
+  else if(act==='imp'){ importSlot=slot; $('fileInput').value=''; $('fileInput').click(); }
+  else if(act==='play') previewSlot(slot);
+  else if(act==='save') saveSlot(slot);
+  else if(act==='del'){ if(confirm('この声を消しますか？')){ idbDel(slot).then(()=>{ delete voiceBlobs[slot]; if(voiceUrls[slot]) URL.revokeObjectURL(voiceUrls[slot]); delete voiceUrls[slot]; renderPhrases(); }); } }
+}
+async function toggleRecord(slot){
+  if(mediaRecorder && recSlot===slot){
+    mediaRecorder.stop();
+    return;
+  }
+  if(mediaRecorder){ alert('ほかの録音が終わってからにしてください'); return; }
+  try{
+    recStream = await navigator.mediaDevices.getUserMedia({audio:true});
+  }catch(e){ alert('マイクが使えませんでした'); return; }
+  suspendDetection(60000);
+  recChunks=[]; recSlot=slot;
+  mediaRecorder = new MediaRecorder(recStream);
+  mediaRecorder.ondataavailable = ev=>{ if(ev.data.size) recChunks.push(ev.data); };
+  mediaRecorder.onstop = async ()=>{
+    const blob = new Blob(recChunks, {type: mediaRecorder.mimeType||'audio/mp4'});
+    recStream.getTracks().forEach(t=>t.stop());
+    mediaRecorder=null; recSlot=null;
+    await idbSet(slot, blob);
+    voiceBlobs[slot]=blob;
+    if(voiceUrls[slot]) URL.revokeObjectURL(voiceUrls[slot]);
+    voiceUrls[slot]=URL.createObjectURL(blob);
+    suspendDetection(1000);
+    renderPhrases();
+  };
+  mediaRecorder.start();
+  const st = $('recStat'+slot);
+  if(st) st.innerHTML = '<p class="note"><span class="recDot"></span>録音中… もう一度「録音」を押すと終わります</p>';
+  e_currentRecBtn(slot);
+}
+function e_currentRecBtn(slot){ /* visual only; re-render handled on stop */ }
+
+$('fileInput').addEventListener('change', async ()=>{
+  const f = $('fileInput').files[0];
+  const slot = importSlot;
+  if(!f || slot===null) return;
+  const reject = ()=>alert('動画は取り込めません。音声ファイルを選んでください');
+  const name = (f.name||'').toLowerCase();
+  if(f.type && f.type.indexOf('video/')===0) return reject();
+  if(/(.mp4|.mov|.m4v|.avi|.webm)$/.test(name) && (!f.type || f.type.indexOf('audio/')!==0)){
+    // untyped video container: try audio decode check
+    const ok = await tryDecodeAudio(f);
+    if(!ok) return reject();
+  }
+  if(f.type && f.type.indexOf('audio/')!==0 && f.type!==''){
+    const ok = await tryDecodeAudio(f);
+    if(!ok) return reject();
+  }
+  await idbSet(slot, f);
+  voiceBlobs[slot]=f;
+  if(voiceUrls[slot]) URL.revokeObjectURL(voiceUrls[slot]);
+  voiceUrls[slot]=URL.createObjectURL(f);
+  renderPhrases();
+  alert('声を取り込みました');
+});
+function tryDecodeAudio(file){
+  return new Promise(res=>{
+    const ctx = new (window.AudioContext||window.webkitAudioContext)();
+    file.arrayBuffer().then(buf=>ctx.decodeAudioData(buf, ()=>{ctx.close(); res(true);}, ()=>{ctx.close(); res(false);}))
+    .catch(()=>res(false));
+  });
+}
+
+/* playback of a single slot (preview / main) */
+let currentAudio=null;
+function playSlotAudio(slot, volScale){
+  return new Promise(res=>{
+    stopCurrentAudio();
+    if(voiceUrls[slot]){
+      const a = new Audio(voiceUrls[slot]);
+      a.volume = Math.min(1, voiceVolume()*(volScale||1));
+      currentAudio=a;
+      a.onended = ()=>{ currentAudio=null; res(); };
+      a.onerror = ()=>{ currentAudio=null; res(); };
+      a.play().catch(()=>{ currentAudio=null; res(); });
+    }else{
+      speakText(settings.texts[slot]||'', res);
+    }
+  });
+}
+function stopCurrentAudio(){
+  if(currentAudio){ try{ currentAudio.pause(); }catch(e){} currentAudio=null; }
+  if(window.speechSynthesis) speechSynthesis.cancel();
+}
+function speakText(text, done){
+  if(!('speechSynthesis' in window)){ done&&done(); return; }
+  const u = new SpeechSynthesisUtterance(text);
+  u.lang='ja-JP'; u.rate=0.95;
+  try{ u.volume = voiceVolume(); }catch(e){}
+  u.onend = ()=>done&&done();
+  u.onerror = ()=>done&&done();
+  speechSynthesis.speak(u);
+}
+async function previewSlot(slot){
+  suspendDetection(30000);
+  await playSlotAudio(slot, 1);
+  suspendDetection(1000);
+}
+async function saveSlot(slot){
+  const blob = voiceBlobs[slot];
+  const panel = $('savePanel'+slot);
+  if(!blob){ return; }
+  const file = new File([blob], 'koekake-'+slot+'.m4a', {type: blob.type||'audio/mp4'});
+  if(navigator.canShare && navigator.canShare({files:[file]})){
+    try{ await navigator.share({files:[file]}); return; }catch(e){ if(e && e.name==='AbortError') return; }
+  }
+  panel.innerHTML = '<div id="savePanelIn'+slot+'"><p class="note">下のプレーヤーの共有／ダウンロードから保存できます。長押しでも保存できる場合があります。</p></div>';
+  const a = document.createElement('audio');
+  a.controls = true; a.src = voiceUrls[slot];
+  panel.appendChild(a);
+}
+
+/* ============ detection engine ============ */
+let listening=false, audioCtx=null, analyser=null, micStream=null, rafId=null;
+let smoothed=-70, suspendUntil=0, cooldownUntil=0;
+let epAboveMs=0, epLastAbove=0, epPeak=-90, epStart=0;
+let triggerTimes=[]; // sound-triggered timestamps (ms)
+let wakeLock=null;
+let lastSlot=-1;
+
+function suspendDetection(ms){ suspendUntil = Math.max(suspendUntil, Date.now()+ms); }
+function dbToPct(db){ return Math.max(0, Math.min(100, (db+70)/70*100)); }
+
+async function startListening(){
+  if(listening) return;
+  try{
+    micStream = await navigator.mediaDevices.getUserMedia({audio:{echoCancellation:false, noiseSuppression:false, autoGainControl:false}});
+  }catch(e){
+    try{ micStream = await navigator.mediaDevices.getUserMedia({audio:true}); }
+    catch(e2){ alert('マイクが使えませんでした。ブラウザの設定でマイクを許可してください。'); return; }
+  }
+  audioCtx = new (window.AudioContext||window.webkitAudioContext)();
+  const src = audioCtx.createMediaStreamSource(micStream);
+  analyser = audioCtx.createAnalyser();
+  analyser.fftSize = 2048;
+  src.connect(analyser);
+  listening = true;
+  smoothed = -70; epAboveMs=0; epLastAbove=0; epPeak=-90;
+  $('bigBtn').textContent='■ とめる';
+  $('simpleStart').textContent='■ とめる';
+  requestWakeLock();
+  loop();
+  setStatus();
+}
+function stopListening(){
+  listening=false;
+  if(rafId) cancelAnimationFrame(rafId);
+  if(micStream) micStream.getTracks().forEach(t=>t.stop());
+  if(audioCtx) audioCtx.close().catch(()=>{});
+  micStream=null; audioCtx=null; analyser=null;
+  if(wakeLock){ try{ wakeLock.release(); }catch(e){} wakeLock=null; }
+  $('bigBtn').textContent='▶ 声かけをはじめる';
+  $('simpleStart').textContent='▶ 声かけをはじめる';
+  $('dbVal').textContent='--';
+  $('levelBar').style.width='0%';
+  $('ringProg').style.strokeDashoffset = 590.6;
+  setStatus();
+}
+async function requestWakeLock(){
+  try{
+    if('wakeLock' in navigator){
+      wakeLock = await navigator.wakeLock.request('screen');
+      wakeLock.addEventListener('release', ()=>{ wakeLock=null; });
+    }
+  }catch(e){}
+}
+document.addEventListener('visibilitychange', ()=>{
+  if(listening && document.visibilityState==='visible' && !wakeLock) requestWakeLock();
+});
+
+let lastLoopT=0;
+function loop(){
+  if(!listening) return;
+  rafId = requestAnimationFrame(loop);
+  const now = performance.now();
+  if(now - lastLoopT < 50) return;
+  const dt = lastLoopT? now-lastLoopT : 50;
+  lastLoopT = now;
+  const buf = new Float32Array(analyser.fftSize);
+  analyser.getFloatTimeDomainData(buf);
+  let sum=0; for(let i=0;i<buf.length;i++) sum += buf[i]*buf[i];
+  const rms = Math.sqrt(sum/buf.length);
+  const rawDb = rms>0 ? 20*Math.log10(rms) : -90;
+  smoothed = smoothed*0.65 + Math.max(rawDb,-90)*0.35;
+  // display
+  const pct = dbToPct(smoothed);
+  $('dbVal').textContent = smoothed.toFixed(0);
+  $('levelBar').style.width = pct+'%';
+  $('ringProg').style.strokeDashoffset = 590.6 * (1 - pct/100);
+  // detection
+  const t = Date.now();
+  if(t < suspendUntil || t < cooldownUntil){ epAboveMs=0; epLastAbove=0; return; }
+  if(smoothed >= settings.thr){
+    if(epLastAbove===0) epPeak = smoothed;
+    epPeak = Math.max(epPeak, smoothed);
+    epAboveMs += dt;
+    epLastAbove = t;
+    if(epAboveMs >= settings.dur*1000){
+      const peak = epPeak;
+      epAboveMs=0; epLastAbove=0; epPeak=-90;
+      onTrigger(peak);
+    }
+  }else{
+    if(epLastAbove && t - epLastAbove > 700){ epAboveMs=0; epLastAbove=0; epPeak=-90; }
+  }
+}
+
+function currentBand(){
+  const h = new Date().getHours();
+  if(h>=5 && h<10) return 'morning';
+  if(h>=21 || h<5) return 'night';
+  return 'day';
+}
+function pickEntry(){
+  if(settings.bandOn){
+    const b = currentBand();
+    if(b==='morning') return {slot:100, label:'朝の声かけ'};
+    if(b==='night') return {slot:101, label:'夜の声かけ'};
+  }
+  const order=[0,1,2];
+  let next = order[(lastSlot+1+3)%3];
+  if(next===lastSlot) next = order[(next+1)%3];
+  lastSlot = next;
+  return {slot:next, label:SLOT_TITLES[next]};
+}
+function brakeMultiplier(){
+  const now = Date.now();
+  triggerTimes = triggerTimes.filter(t=> now - t < 10*60*1000);
+  if(triggerTimes.length>=5) return 4;
+  if(triggerTimes.length>=3) return 2;
+  return 1;
+}
+async function onTrigger(peakDb){
+  triggerTimes.push(Date.now());
+  const entry = pickEntry();
+  const mult = brakeMultiplier();
+  const coolMs = Math.min(settings.cool*mult, 1200) * 1000;
+  cooldownUntil = Date.now() + coolMs;
+  faceReact();
+  addHistory({slot:entry.slot, label:entry.label, source:'音に反応', peak:Math.round(peakDb)});
+  const wasAmb = ambPlaying;
+  if(ambPlaying) stopAmbient();
+  suspendDetection(60000);
+  await playSlotAudio(entry.slot, 1);
+  suspendDetection(1000);
+  if(wasAmb && settings.ambResume) startAmbient(ambCurrent);
+  setStatus();
+}
+async function testPlay(){
+  const entry = pickEntry();
+  faceReact();
+  addHistory({slot:entry.slot, label:entry.label, source:'テスト', peak:null});
+  const wasAmb = ambPlaying;
+  if(ambPlaying) stopAmbient();
+  suspendDetection(60000);
+  await playSlotAudio(entry.slot, 1);
+  suspendDetection(1000);
+  if(wasAmb && settings.ambResume) startAmbient(ambCurrent);
+}
+function faceReact(){
+  const st = $('stage');
+  st.classList.add('heard');
+  $('eyesOpen').classList.add('hidden');
+  $('eyesSmile').classList.remove('hidden');
+  setTimeout(()=>{
+    st.classList.remove('heard');
+    $('eyesOpen').classList.remove('hidden');
+    $('eyesSmile').classList.add('hidden');
+  }, 4200);
+}
+function setStatus(){
+  const el = $('statusText');
+  if(!listening){ el.textContent='とまっています'; return; }
+  const now = Date.now();
+  if(now < cooldownUntil){
+    const sec = Math.ceil((cooldownUntil-now)/1000);
+    el.textContent = brakeMultiplier()>1 ? '連続したので少しお休み中（あと'+sec+'秒）' : 'お休み中（あと'+sec+'秒）';
+  }else{
+    el.textContent='聞いています…';
+  }
+}
+setInterval(setStatus, 500);
+
+/* ============ history / summary / recommended line ============ */
+function addHistory(h){
+  h.time = Date.now();
+  h.text = settings.texts[h.slot]||'';
+  historyArr.push(h);
+  saveHistory(); renderHistory(); renderSummary(); renderReco();
+}
+function fmtTime(ts){
+  const d = new Date(ts);
+  return ('0'+d.getHours()).slice(-2)+':'+('0'+d.getMinutes()).slice(-2);
+}
+function renderHistory(){
+  const el = $('historyList');
+  if(!historyArr.length){ el.innerHTML='<span class="sub">まだ記録はありません</span>'; return; }
+  el.innerHTML = historyArr.slice(-50).reverse().map(h=>{
+    const d = new Date(h.time);
+    const date = (d.getMonth()+1)+'/'+d.getDate();
+    return '<div>'+date+' '+fmtTime(h.time)+' 「'+escapeHtml(h.text)+'」 <span class="sub">'+h.source+'</span>'+
+      (h.peak!==null && h.peak!==undefined ? ' <span class="histPeak">'+h.peak+' dB</span>' : '')+'</div>';
+  }).join('');
+}
+function escapeHtml(s){ return (s||'').replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function renderSummary(){
+  const today = new Date(); today.setHours(0,0,0,0);
+  const todays = historyArr.filter(h=>h.time>=today.getTime() && h.source==='音に反応');
+  const el = $('summaryBar');
+  if(!todays.length){ el.textContent='今日はまだ反応していません'; return; }
+  const last = todays[todays.length-1];
+  el.innerHTML = '今日は <b>'+todays.length+'回</b> 反応して声かけしました<br><span class="sub">最後は '+fmtTime(last.time)+'（'+(last.peak!==null?last.peak+' dB':'')+'）「'+escapeHtml(last.text)+'」</span>';
+}
+function renderReco(){
+  const peaks = historyArr.filter(h=>h.source==='音に反応' && h.peak!==null && h.peak!==undefined).map(h=>h.peak);
+  const el = $('recoLine');
+  if(peaks.length<3){
+    el.textContent = 'おすすめライン：反応が'+peaks.length+'回たまっています。3回たまると目安を出します。';
+    return;
+  }
+  const sorted = peaks.slice().sort((a,b)=>a-b);
+  const med = sorted[Math.floor(sorted.length/2)];
+  const reco = Math.max(-60, Math.min(-20, med-4));
+  el.innerHTML = 'おすすめライン：<b>'+reco+' dB</b>（反応した音の真ん中 '+med+' dB から少し下げた値） <button class="ghost small" id="recoApply">このラインにする</button>';
+  $('recoApply').addEventListener('click', ()=>{
+    settings.thr = reco; saveSettings(); applySettingsToUI();
+  });
+}
+$('copyHistBtn').addEventListener('click', async ()=>{
+  const today = new Date();
+  const todays = historyArr.filter(h=>{ const d=new Date(h.time); return d.toDateString()===today.toDateString(); });
+  const lines = todays.map(h=> fmtTime(h.time)+' 「'+(h.text||'')+'」 '+h.source+(h.peak!==null&&h.peak!==undefined?' '+h.peak+'dB':''));
+  const text = (today.getMonth()+1)+'月'+today.getDate()+'日 声かけの記録\n反応 '+todays.filter(h=>h.source==='音に反応').length+'回\n'+lines.join('\n');
+  try{ await navigator.clipboard.writeText(text); alert('履歴をコピーしました'); }
+  catch(e){
+    $('copyFallback').classList.remove('hidden');
+    $('copyText').value = text;
+  }
+});
+$('clearHistBtn').addEventListener('click', ()=>{
+  if(confirm('履歴を全部消しますか？')){ historyArr=[]; saveHistory(); renderHistory(); renderSummary(); renderReco(); }
+});
+
+/* ============ calibration ============ */
+$('calibBtn').addEventListener('click', async ()=>{
+  const btn = $('calibBtn');
+  btn.disabled = true; btn.textContent='はかっています…（3秒）';
+  let tempStream=null, tempCtx=null, tempAn=null, ownMic=false;
+  try{
+    if(listening && analyser){ ownMic=true; }
+    else{
+      tempStream = await navigator.mediaDevices.getUserMedia({audio:true});
+      tempCtx = new (window.AudioContext||window.webkitAudioContext)();
+      const s = tempCtx.createMediaStreamSource(tempStream);
+      tempAn = tempCtx.createAnalyser(); tempAn.fftSize=2048; s.connect(tempAn);
+    }
+    const an = ownMic? analyser : tempAn;
+    const samples=[];
+    const t0 = performance.now();
+    await new Promise(res=>{
+      const iv = setInterval(()=>{
+        const buf = new Float32Array(an.fftSize);
+        an.getFloatTimeDomainData(buf);
+        let sum=0; for(let i=0;i<buf.length;i++) sum+=buf[i]*buf[i];
+        const rms = Math.sqrt(sum/buf.length);
+        samples.push(rms>0?20*Math.log10(rms):-90);
+        if(performance.now()-t0>3000){ clearInterval(iv); res(); }
+      }, 100);
+    });
+    const avg = samples.reduce((a,b)=>a+b,0)/Math.max(1,samples.length);
+    const thr = Math.max(-60, Math.min(-20, Math.round(avg+10)));
+    settings.thr = thr; saveSettings(); applySettingsToUI();
+    $('statusText').textContent = '部屋の静かさは約 '+Math.round(avg)+' dB。ラインを '+thr+' dB にしました';
+  }catch(e){ alert('マイクが使えませんでした'); }
+  if(tempStream) tempStream.getTracks().forEach(t=>t.stop());
+  if(tempCtx) tempCtx.close().catch(()=>{});
+  btn.disabled=false; btn.textContent='部屋の静かさをはかる';
+});
+
+/* ============ calming sounds (all generated) ============ */
+let ambCtx=null, ambGain=null, ambNodes=[], ambTimers=[], ambPlaying=false, ambCurrent=null, ambStopTimer=null;
+function noiseBuffer(ctx){
+  const len = ctx.sampleRate*2;
+  const buf = ctx.createBuffer(1, len, ctx.sampleRate);
+  const d = buf.getChannelData(0);
+  let last=0;
+  for(let i=0;i<len;i++){ const w = Math.random()*2-1; last = (last + 0.02*w)/1.02; d[i] = (last*3 + w*0.35); }
+  return buf;
+}
+function ambVolume(){ return (settings.ambVol/100) * (settings.night?0.55:1) * 0.9; }
+function startAmbient(kind){
+  stopAmbient();
+  if(!kind) return;
+  ambCtx = ambCtx || new (window.AudioContext||window.webkitAudioContext)();
+  if(ambCtx.state==='suspended') ambCtx.resume();
+  ambGain = ambCtx.createGain();
+  ambGain.gain.value = ambVolume();
+  ambGain.connect(ambCtx.destination);
+  ambNodes=[]; ambTimers=[];
+  const ctx = ambCtx;
+  const mkNoise = ()=>{ const s = ctx.createBufferSource(); s.buffer = noiseBuffer(ctx); s.loop=true; s.connect(ambGain); return s; };
+  const lfo = (freq, depth, param, base)=>{
+    const o = ctx.createOscillator(); o.frequency.value=freq;
+    const g = ctx.createGain(); g.gain.value=depth;
+    o.connect(g); g.connect(param); o.start();
+    ambNodes.push(o); return o;
+  };
+  if(kind==='rain'){
+    const n = mkNoise(); const f = ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=1300;
+    n.disconnect(); n.connect(f); f.connect(ambGain); n.start(); ambNodes.push(n);
+  }else if(kind==='stream'){
+    const n = mkNoise(); const f = ctx.createBiquadFilter(); f.type='bandpass'; f.frequency.value=750; f.Q.value=0.8;
+    n.disconnect(); n.connect(f); f.connect(ambGain); lfo(0.09, 260, f.frequency); n.start(); ambNodes.push(n);
+  }else if(kind==='waves'){
+    const n = mkNoise(); const f = ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=480;
+    const g = ctx.createGain(); g.gain.value=0.55;
+    n.disconnect(); n.connect(f); f.connect(g); g.connect(ambGain);
+    lfo(0.08, 0.4, g.gain); n.start(); ambNodes.push(n);
+  }else if(kind==='noise'){
+    const n = mkNoise(); const f = ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=380;
+    n.disconnect(); n.connect(f); f.connect(ambGain); n.start(); ambNodes.push(n);
+  }else if(kind==='fire'){
+    const n = mkNoise(); const f = ctx.createBiquadFilter(); f.type='lowpass'; f.frequency.value=300;
+    const g = ctx.createGain(); g.gain.value=0.5;
+    n.disconnect(); n.connect(f); f.connect(g); g.connect(ambGain); n.start(); ambNodes.push(n);
+    const crackle = ()=>{
+      const t = ctx.currentTime;
+      const src = ctx.createBufferSource(); src.buffer = noiseBuffer(ctx);
+      const hp = ctx.createBiquadFilter(); hp.type='highpass'; hp.frequency.value=1800;
+      const cg = ctx.createGain();
+      cg.gain.setValueAtTime(0.5+Math.random()*0.5, t);
+      cg.gain.exponentialRampToValueAtTime(0.001, t+0.03+Math.random()*0.05);
+      src.connect(hp); hp.connect(cg); cg.connect(ambGain);
+      src.start(t, Math.random()*1.5, 0.1);
+      ambTimers.push(setTimeout(crackle, 120+Math.random()*700));
+    };
+    crackle();
+  }else if(kind==='musicbox'){
+    const notes = [523.25, 659.25, 783.99, 659.25, 587.33, 659.25, 523.25, 440, 523.25, 587.33, 659.25, 587.33, 523.25];
+    let i=0;
+    const play = ()=>{
+      const f = notes[i%notes.length]; i++;
+      const t = ctx.currentTime;
+      [1,2].forEach((m,idx)=>{
+        const o = ctx.createOscillator(); o.type='sine'; o.frequency.value=f*m;
+        const g = ctx.createGain();
+        const v = idx===0?0.35:0.08;
+        g.gain.setValueAtTime(v, t);
+        g.gain.exponentialRampToValueAtTime(0.0001, t+1.6);
+        o.connect(g); g.connect(ambGain); o.start(t); o.stop(t+1.7);
+      });
+      ambTimers.push(setTimeout(play, 620));
+    };
+    play();
+  }else if(kind==='chime'){
+    const scale = [1567.98, 1760, 2093, 2349.32, 2637.02];
+    const play = ()=>{
+      const f = scale[Math.floor(Math.random()*scale.length)];
+      const t = ctx.currentTime;
+      const o = ctx.createOscillator(); o.type='sine'; o.frequency.value=f;
+      const g = ctx.createGain();
+      g.gain.setValueAtTime(0.22, t);
+      g.gain.exponentialRampToValueAtTime(0.0001, t+3.2);
+      o.connect(g); g.connect(ambGain); o.start(t); o.stop(t+3.3);
+      ambTimers.push(setTimeout(play, 1400+Math.random()*2600));
+    };
+    play();
+  }else if(kind==='birds'){
+    const chirp = ()=>{
+      const t = ctx.currentTime;
+      const n = 2+Math.floor(Math.random()*3);
+      for(let k=0;k<n;k++){
+        const o = ctx.createOscillator(); o.type='sine';
+        const st = t + k*0.16;
+        o.frequency.setValueAtTime(2300+Math.random()*600, st);
+        o.frequency.exponentialRampToValueAtTime(3100+Math.random()*700, st+0.07);
+        o.frequency.exponentialRampToValueAtTime(2400, st+0.13);
+        const g = ctx.createGain();
+        g.gain.setValueAtTime(0.0001, st);
+        g.gain.exponentialRampToValueAtTime(0.12, st+0.03);
+        g.gain.exponentialRampToValueAtTime(0.0001, st+0.14);
+        o.connect(g); g.connect(ambGain); o.start(st); o.stop(st+0.16);
+      }
+      ambTimers.push(setTimeout(chirp, 1800+Math.random()*4200));
+    };
+    chirp();
+  }
+  ambPlaying = true; ambCurrent = kind;
+  document.querySelectorAll('#ambGrid button').forEach(b=>b.classList.toggle('on', b.dataset.kind===kind));
+  if(settings.ambTimer>0){
+    ambStopTimer = setTimeout(()=>{ stopAmbient(); }, settings.ambTimer*60*1000);
+  }
+}
+function stopAmbient(){
+  ambTimers.forEach(t=>clearTimeout(t)); ambTimers=[];
+  if(ambStopTimer){ clearTimeout(ambStopTimer); ambStopTimer=null; }
+  ambNodes.forEach(n=>{ try{ n.stop(); }catch(e){} try{ n.disconnect(); }catch(e){} });
+  ambNodes=[];
+  if(ambGain){ try{ ambGain.disconnect(); }catch(e){} ambGain=null; }
+  ambPlaying=false; ambCurrent=null;
+  document.querySelectorAll('#ambGrid button').forEach(b=>b.classList.remove('on'));
+}
+const AMB_KINDS = [['rain','雨'],['stream','小川'],['waves','波'],['noise','やさしいノイズ'],['musicbox','オルゴール'],['chime','風鈴'],['birds','鳥のさえずり'],['fire','焚き火']];
+AMB_KINDS.forEach(([kind,label])=>{
+  const b = document.createElement('button');
+  b.textContent = label; b.dataset.kind = kind;
+  b.addEventListener('click', ()=>{ ambPlaying && ambCurrent===kind ? stopAmbient() : startAmbient(kind); });
+  $('ambGrid').appendChild(b);
+});
+
+/* ============ UI wiring ============ */
+function updateTicks(){
+  const pct = dbToPct(settings.thr);
+  $('levelTick').style.left = 'calc('+pct+'% - 1px)';
+  $('ringTickG').setAttribute('transform', 'rotate('+(90 + pct*3.6)+' 100 100)');
+}
+function updateBandNow(){
+  const el = $('bandNow');
+  if(!settings.bandOn){ el.textContent=''; return; }
+  const b = currentBand();
+  el.textContent = b==='morning' ? 'いまは「朝の声かけ」の時間です（5〜10時）'
+    : b==='night' ? 'いまは「夜の声かけ」の時間です（21〜5時）'
+    : 'いまは昼の時間です（声かけ1〜3が順番に出ます）';
+}
+setInterval(updateBandNow, 60000);
+
+function applySettingsToUI(){
+  $('thr').value = settings.thr;
+  $('thrVal').textContent = settings.thr+' dB';
+  $('dur').value = settings.dur;
+  $('durVal').textContent = settings.dur.toFixed(1)+' 秒';
+  $('vol').value = settings.vol;
+  $('volVal').textContent = settings.vol+'%';
+  $('cool').value = settings.cool;
+  $('coolVal').textContent = settings.cool+' 秒';
+  $('ambVol').value = settings.ambVol;
+  $('ambVolVal').textContent = settings.ambVol+'%';
+  $('ambTimer').value = String(settings.ambTimer);
+  $('ambResume').checked = settings.ambResume;
+  $('bandToggle').checked = settings.bandOn;
+  $('nightToggle').checked = settings.night;
+  $('nightToggle2').checked = settings.night;
+  document.body.classList.toggle('night', settings.night);
+  document.body.classList.toggle('simple', settings.simple);
+  updateTicks(); updateBandNow();
+  if(ambGain) ambGain.gain.value = ambVolume();
+}
+$('thr').addEventListener('input', e=>{ settings.thr=+e.target.value; saveSettings(); applySettingsToUI(); });
+$('dur').addEventListener('input', e=>{ settings.dur=+e.target.value; saveSettings(); applySettingsToUI(); });
+$('vol').addEventListener('input', e=>{ settings.vol=+e.target.value; saveSettings(); applySettingsToUI(); });
+$('cool').addEventListener('input', e=>{ settings.cool=+e.target.value; saveSettings(); applySettingsToUI(); });
+$('ambVol').addEventListener('input', e=>{ settings.ambVol=+e.target.value; saveSettings(); applySettingsToUI(); });
+$('ambTimer').addEventListener('change', e=>{ settings.ambTimer=+e.target.value; saveSettings();
+  if(ambPlaying){ if(ambStopTimer) clearTimeout(ambStopTimer); if(settings.ambTimer>0) ambStopTimer=setTimeout(stopAmbient, settings.ambTimer*60*1000); } });
+$('ambResume').addEventListener('change', e=>{ settings.ambResume=e.target.checked; saveSettings(); });
+$('bandToggle').addEventListener('change', e=>{ settings.bandOn=e.target.checked; saveSettings(); updateBandNow(); });
+function setNight(v){
+  settings.night=v; saveSettings(); applySettingsToUI();
+}
+$('nightToggle').addEventListener('change', e=>setNight(e.target.checked));
+$('nightToggle2').addEventListener('change', e=>setNight(e.target.checked));
+
+$('bigBtn').addEventListener('click', ()=> listening? stopListening() : startListening());
+$('simpleStart').addEventListener('click', ()=> listening? stopListening() : startListening());
+$('testBtn').addEventListener('click', ()=>{ if(!mediaRecorder) testPlay(); });
+$('simpleBtn').addEventListener('click', ()=>{ settings.simple=true; saveSettings(); applySettingsToUI(); window.scrollTo(0,0); });
+$('exitSimple').addEventListener('click', e=>{ e.preventDefault(); settings.simple=false; saveSettings(); applySettingsToUI(); });
+$('memoBtn').addEventListener('click', ()=>{ $('mainView').classList.add('hidden'); $('memoView').classList.remove('hidden'); window.scrollTo(0,0); });
+$('memoBack').addEventListener('click', ()=>{ $('memoView').classList.add('hidden'); $('mainView').classList.remove('hidden'); });
+
+/* ============ init ============ */
+applySettingsToUI();
+renderHistory(); renderSummary(); renderReco();
+if(location.hash==='#memo'){ $('mainView').classList.add('hidden'); $('memoView').classList.remove('hidden'); }
+openIDB().then(loadVoices).catch(()=>renderPhrases());
+</script>
+</body>
+</html>
